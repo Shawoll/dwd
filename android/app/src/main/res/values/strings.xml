@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Detector Link</string>
+
+    <string name="channel_link">Detector connection</string>
+    <string name="channel_threat">Drone alerts</string>
+    <string name="channel_threat_desc">New or approaching drones detected by your detector</string>
+
+    <string name="status_live">Live · %1$s</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_reconnecting">Reconnecting…</string>
+    <string name="status_idle">Not connected</string>
+    <string name="phase_live">Live</string>
+    <string name="no_tracks">No drones detected</string>
+    <string name="stale">STALE</string>
+    <plurals name="active_tracks">
+        <item quantity="one">%d active track</item>
+        <item quantity="other">%d active tracks</item>
+    </plurals>
+
+    <string name="alert_title">Drone detected · %1$s</string>
+    <string name="threat_high">High</string>
+    <string name="threat_medium">Medium</string>
+    <string name="threat_low">Low</string>
+    <string name="threat_unknown">Unknown</string>
+
+    <string name="discovery_title">Detectors on this network</string>
+    <string name="discovery_hint">Searching via mDNS. Connect your phone to the detector\'s Wi-Fi if nothing shows up.</string>
+    <string name="manual_title">Or enter an address</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="open_ui">Open detector UI</string>
+    <string name="close">Close</string>
+    <string name="retry">Retry</string>
+    <string name="ui_unreachable">Detector UI unreachable</string>
+
+    <string name="car_title">Drone detections</string>
+    <string name="car_detail_title">Track detail</string>
+    <string name="car_not_connected">Not connected. Pick a detector on your phone.</string>
+    <string name="car_stale">Link lost · last known position</string>
+    <string name="car_track_lost">Track lost</string>
+    <string name="car_threat">Threat</string>
+    <string name="car_position">Bearing · distance</string>
+    <string name="car_signal">Signal</string>
+    <string name="car_remote_id">Remote ID</string>
+</resources>

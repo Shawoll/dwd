@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The detector serves plain HTTP/WS on the local network, addressed by IP, and
+  Android's domain-config can't match IP ranges. So cleartext is allowed app-wide.
+  This app talks to nothing else. Production: TLS with a per-device certificate
+  pinned at pairing time (the detector is the only server we ever trust).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
