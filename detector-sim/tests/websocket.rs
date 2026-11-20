@@ -1,5 +1,3 @@
-//! End-to-end: real TCP listener, real WebSocket client, same router as production.
-
 use std::time::Duration;
 
 use detector_sim::hub::Hub;
@@ -30,7 +28,7 @@ async fn hello_snapshot_then_ordered_deltas() {
     let info = DetectorInfo { id: "T1".into(), name: "Test".into(), firmware: "t".into(), position: None };
     let sim = Simulator::new(SimConfig { spawn_chance: 0.0, ..SimConfig::default() }, 1);
     let hub = Hub::new(info, sim);
-    hub.spawn(0); // already active before the client connects
+    hub.spawn(0);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -80,7 +78,6 @@ async fn info_endpoint_reports_detector() {
     let addr = listener.local_addr().unwrap();
     tokio::spawn(axum::serve(listener, server::router(hub, None)).into_future());
 
-    // Plain HTTP/1.0 request keeps the test dependency-free.
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let mut tcp = tokio::net::TcpStream::connect(addr).await.unwrap();
     tcp.write_all(b"GET /api/info HTTP/1.0\r\n\r\n").await.unwrap();

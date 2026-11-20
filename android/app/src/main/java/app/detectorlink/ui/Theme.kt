@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import app.detectorlink.model.ThreatLevel
 
-// Same palette as the detector's web UI, so switching to the WebView doesn't jar.
 private val Scheme = darkColorScheme(
     primary = Color(0xFF5FD3A6),
     onPrimary = Color(0xFF00281A),

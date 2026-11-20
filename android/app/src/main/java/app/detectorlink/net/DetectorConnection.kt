@@ -39,16 +39,6 @@ data class LinkStatus(
     enum class Phase { IDLE, CONNECTING, LIVE, RECONNECTING }
 }
 
-/**
- * Keeps one WebSocket to the detector alive for as long as [connect] is in effect.
- *
- * Failure handling, in order of how often it happens in a car:
- *  - Wi-Fi drops / detector reboots -> OkHttp ping (10 s) or our heartbeat
- *    watchdog notices, we back off exponentially with jitter and reconnect.
- *  - Missed or reordered message -> TrackStore reports a seq gap, we close
- *    and reconnect at once; the server always opens with a full snapshot.
- *  - Meanwhile the last known tracks stay visible, marked stale.
- */
 class DetectorConnection(
     private val client: OkHttpClient,
     private val store: TrackStore,
@@ -58,7 +48,6 @@ class DetectorConnection(
     val status: StateFlow<LinkStatus> = _status.asStateFlow()
 
     private val _alerts = MutableSharedFlow<Track>(extraBufferCapacity = 32)
-    /** New or escalated tracks. Hot stream; collectors decide how to alert. */
     val alerts: SharedFlow<Track> = _alerts.asSharedFlow()
 
     private var job: Job? = null
@@ -94,7 +83,7 @@ class DetectorConnection(
             _status.value = _status.value.copy(phase = LinkStatus.Phase.RECONNECTING, lastError = end.reason)
 
             attempt = when {
-                end is SessionEnd.Resync -> 0 // healthy link, just out of sync: retry now
+                end is SessionEnd.Resync -> 0
                 end.wasLive -> 1
                 else -> attempt + 1
             }
@@ -143,8 +132,7 @@ class DetectorConnection(
 
         val socket = client.newWebSocket(Request.Builder().url(endpoint.wsUrl).build(), listener)
 
-        // Server heartbeats every 2 s. Silence for longer than STALE_MS means the
-        // link is dead even if TCP hasn't noticed yet (typical on Wi-Fi roam).
+        // Dead Wi-Fi often still looks alive to TCP.
         val watchdog = launch {
             while (isActive) {
                 delay(1_000)
@@ -158,7 +146,7 @@ class DetectorConnection(
             ended.await()
         } finally {
             watchdog.cancel()
-            socket.cancel() // also runs when the whole job is cancelled
+            socket.cancel()
         }
     }
 

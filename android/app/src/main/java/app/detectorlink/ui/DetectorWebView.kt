@@ -41,19 +41,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.detectorlink.BuildConfig
 import app.detectorlink.R
 
-/**
- * The detector's own Svelte UI, served by the detector, shown inside the app.
- *
- * Choices:
- *  - Plain WebView, no JS bridge: the UI is the same build that runs in a laptop
- *    browser, so it must not depend on the app. (A narrow bridge, e.g. exposing
- *    "is native app" or a share action, can be added later, origin-checked.)
- *  - Navigation is locked to the detector's origin; any other link opens in the
- *    system browser, so a compromised or misconfigured page can't take over the app.
- *  - Errors get a native retry screen instead of Chrome's dinosaur.
- *  - WebView is paused with the activity so its own WebSocket doesn't run twice in
- *    the background next to the service's.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -94,9 +81,9 @@ fun DetectorWebView(url: String, title: String, onClose: () -> Unit) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
-                    WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG) // chrome://inspect
+                    WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
                     WebView(ctx).apply {
-                        setBackgroundColor(android.graphics.Color.parseColor("#0B0F0E")) // no white flash
+                        setBackgroundColor(android.graphics.Color.parseColor("#0B0F0E"))
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.allowFileAccess = false
@@ -106,7 +93,7 @@ fun DetectorWebView(url: String, title: String, onClose: () -> Unit) {
                                 if (target.host == origin.host && target.port == origin.port) return false
                                 try {
                                     ctx.startActivity(Intent(Intent.ACTION_VIEW, target))
-                                } catch (e: ActivityNotFoundException) { // no browser installed; ignore the link
+                                } catch (e: ActivityNotFoundException) {
                                 }
                                 return true
                             }

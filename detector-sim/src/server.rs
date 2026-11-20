@@ -1,10 +1,3 @@
-//! HTTP + WebSocket surface of the detector.
-//!
-//! * `GET  /ws`         live detection stream (see `protocol.rs`)
-//! * `GET  /api/info`   detector identity, handy for health checks
-//! * `POST /api/spawn`  demo only: inject a drone now
-//! * `GET  /*`          the Svelte UI (static files, SPA fallback to index.html)
-
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -71,9 +64,7 @@ async fn client(mut socket: WebSocket, hub: Arc<Hub>) {
                 Ok(frame) => {
                     if send(&mut socket, frame).await.is_err() { break; }
                 }
-                // Client too slow: rather than replaying a backlog, resubscribe and
-                // send a fresh snapshot. The client sees seq jump, which is exactly
-                // what a snapshot is allowed to do.
+                // Slow client: send a fresh snapshot instead of a backlog.
                 Err(RecvError::Lagged(skipped)) => {
                     tracing::warn!(skipped, "client lagged, resyncing with snapshot");
                     let (snapshot, fresh) = hub.subscribe(now_ms());
@@ -83,7 +74,6 @@ async fn client(mut socket: WebSocket, hub: Arc<Hub>) {
                 Err(RecvError::Closed) => break,
             },
             incoming = socket.recv() => match incoming {
-                // Clients don't send commands in v1. Pings are answered by axum.
                 Some(Ok(Message::Close(_))) | None | Some(Err(_)) => break,
                 Some(Ok(_)) => {}
             },

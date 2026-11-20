@@ -16,21 +16,6 @@ import java.net.Inet4Address
 import java.net.InetAddress
 import kotlin.coroutines.resume
 
-/**
- * Finds detectors on the local network via DNS-SD (`_cuas-detector._tcp`).
- *
- * Uses the platform NsdManager rather than a Java mDNS library:
- *  - the system mDNS daemon handles multicast, so we need no MulticastLock and
- *    don't fight other apps for port 5353;
- *  - it keeps working while the app is in the background.
- *
- * Known NsdManager traps handled here:
- *  - Callbacks arrive on a binder thread -> everything is funnelled through one
- *    channel and processed sequentially by one coroutine.
- *  - Before API 34, resolveService() allows only ONE resolve in flight
- *    (FAILURE_ALREADY_ACTIVE otherwise) -> resolves are serialised.
- *  - A resolve can hang on flaky Wi-Fi -> per-resolve timeout.
- */
 class DetectorDiscovery(context: Context) {
     private val nsd = context.getSystemService(NsdManager::class.java)
 
@@ -39,7 +24,6 @@ class DetectorDiscovery(context: Context) {
         data class Lost(val name: String) : NsdEvent
     }
 
-    /** Emits the current list of resolved detectors. Discovery runs while collected. */
     fun discover(): Flow<List<DetectorEndpoint>> = callbackFlow {
         val events = Channel<NsdEvent>(Channel.UNLIMITED)
         val found = LinkedHashMap<String, DetectorEndpoint>()
@@ -76,10 +60,8 @@ class DetectorDiscovery(context: Context) {
     }
 
     private suspend fun resolve(info: NsdServiceInfo): DetectorEndpoint? = withTimeoutOrNull(RESOLVE_TIMEOUT_MS) {
+        // Before API 34 only one resolve may be in flight, so callers serialise these.
         suspendCancellableCoroutine { cont ->
-            // resolveService is deprecated on API 34 in favour of registerServiceInfoCallback,
-            // but it is the only option down to minSdk 26 and still works. A production
-            // build would branch on SDK_INT and use the callback API on 34+.
             @Suppress("DEPRECATION")
             nsd.resolveService(info, object : NsdManager.ResolveListener {
                 override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) {
@@ -96,7 +78,6 @@ class DetectorDiscovery(context: Context) {
     private fun NsdServiceInfo.toEndpoint(): DetectorEndpoint? {
         val address = preferredAddress() ?: return null
         fun txt(key: String) = attributes[key]?.toString(Charsets.UTF_8)
-        // proto is the major protocol version; refuse detectors we can't talk to.
         val proto = txt("proto")?.toIntOrNull()
         if (proto != null && proto != app.detectorlink.model.Protocol.VERSION) {
             Log.w(TAG, "$serviceName speaks protocol $proto, app supports ${app.detectorlink.model.Protocol.VERSION}")
@@ -112,7 +93,6 @@ class DetectorDiscovery(context: Context) {
         )
     }
 
-    /** IPv4 first: link-local IPv6 needs a scope id that OkHttp and WebView handle poorly. */
     private fun NsdServiceInfo.preferredAddress(): InetAddress? {
         val all: List<InetAddress> = if (Build.VERSION.SDK_INT >= 34) {
             hostAddresses
@@ -125,7 +105,6 @@ class DetectorDiscovery(context: Context) {
 
     companion object {
         private const val TAG = "DetectorDiscovery"
-        /** Must match detector-sim/src/mdns.rs (NsdManager wants it without ".local."). */
         const val SERVICE_TYPE = "_cuas-detector._tcp"
         private const val RESOLVE_TIMEOUT_MS = 5_000L
     }

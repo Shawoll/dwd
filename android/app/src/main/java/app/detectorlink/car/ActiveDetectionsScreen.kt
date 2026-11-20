@@ -26,17 +26,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 
-/**
- * Live list of detections on the car display.
- *
- * Driver-distraction rules shape this screen:
- *  - The title never changes. A changed title counts as a new "step" against the
- *    host's task limit; same title + same template type is a free refresh.
- *  - Row count is capped by ConstraintManager (the host decides, often 6).
- *  - Redraws are throttled to 1/s: data arrives every 500 ms per track, and a
- *    list that jumps around is worse than one that is half a second late.
- *  - Two text lines per row, threat as a coloured icon, no free-form text.
- */
 class ActiveDetectionsScreen(carContext: CarContext) : Screen(carContext) {
     private val graph = carContext.graph
 
@@ -57,7 +46,7 @@ class ActiveDetectionsScreen(carContext: CarContext) : Screen(carContext) {
         val state = graph.store.state.value
         val link = graph.connection.status.value
         val builder = ListTemplate.Builder()
-            .setTitle(carContext.getString(R.string.car_title))
+            .setTitle(carContext.getString(R.string.car_title)) // constant title = refresh, not a new step
             .setHeaderAction(Action.APP_ICON)
 
         if (link.phase == LinkStatus.Phase.CONNECTING && state.tracks.isEmpty()) {
@@ -68,7 +57,6 @@ class ActiveDetectionsScreen(carContext: CarContext) : Screen(carContext) {
             .getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
         val items = ItemList.Builder().setNoItemsMessage(emptyMessage(link))
 
-        // Stale data stays visible (better than a blank screen) but says so.
         val stale = !state.synced
         state.sorted.take(limit).forEach { track -> items.addItem(row(track, stale)) }
         return builder.setSingleList(items.build()).build()

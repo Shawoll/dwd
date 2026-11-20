@@ -1,10 +1,3 @@
-//! The hub owns detector state and fans events out to every connected client.
-//!
-//! Consistency guarantee: `subscribe()` takes the snapshot and the broadcast
-//! receiver under the same lock that `tick()` holds while it publishes. So a new
-//! client sees every event with `seq > snapshot.seq`, and none from before it.
-//! No client-side filtering or "replay since seq N" logic needed.
-
 use std::sync::{Arc, Mutex};
 
 use tokio::sync::broadcast;
@@ -12,7 +5,6 @@ use tokio::sync::broadcast;
 use crate::protocol::{DetectorInfo, ServerMsg};
 use crate::sim::{Event, Simulator};
 
-/// A message serialised once and shared by all clients.
 pub type Frame = Arc<str>;
 
 pub struct Hub {
@@ -28,7 +20,6 @@ struct State {
 
 impl Hub {
     pub fn new(info: DetectorInfo, sim: Simulator) -> Arc<Self> {
-        // Capacity bounds memory per slow client; a lagging client gets a fresh snapshot.
         let (tx, _) = broadcast::channel(256);
         Arc::new(Self { info, state: Mutex::new(State { sim, seq: 0 }), tx })
     }
@@ -41,15 +32,14 @@ impl Hub {
         encode(&ServerMsg::Hello { protocol: crate::protocol::PROTOCOL_VERSION, detector: self.info.clone() })
     }
 
-    /// Returns the current snapshot frame plus a receiver for everything after it.
     pub fn subscribe(&self, now_ms: u64) -> (Frame, broadcast::Receiver<Frame>) {
         let state = self.state.lock().unwrap();
+        // Subscribing under the publish lock: the client gets exactly the events after this snapshot.
         let rx = self.tx.subscribe();
         let snapshot = ServerMsg::Snapshot { seq: state.seq, ts_ms: now_ms, tracks: state.sim.active_tracks() };
         (encode(&snapshot), rx)
     }
 
-    /// Advance the simulation and publish resulting deltas.
     pub fn tick(&self, now_ms: u64) {
         let mut state = self.state.lock().unwrap();
         let events = state.sim.step(now_ms);
@@ -68,7 +58,6 @@ impl Hub {
         self.publish(&mut state, ServerMsg::Heartbeat { seq: 0, ts_ms: now_ms, active });
     }
 
-    /// Demo helper: make a drone appear right now.
     pub fn spawn(&self, now_ms: u64) -> String {
         let mut state = self.state.lock().unwrap();
         let track = state.sim.spawn(now_ms);
@@ -81,7 +70,6 @@ impl Hub {
         self.tx.receiver_count()
     }
 
-    /// Assigns the next sequence number and broadcasts. Caller holds the lock.
     fn publish(&self, state: &mut State, mut msg: ServerMsg) {
         state.seq += 1;
         let seq = state.seq;
@@ -92,7 +80,6 @@ impl Hub {
             | ServerMsg::Snapshot { seq: s, .. } => *s = seq,
             ServerMsg::Hello { .. } => unreachable!("hello is per-connection"),
         }
-        // Err only means "no subscribers right now", which is fine.
         let _ = self.tx.send(encode(&msg));
     }
 }

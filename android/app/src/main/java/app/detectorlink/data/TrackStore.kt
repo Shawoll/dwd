@@ -12,10 +12,8 @@ data class DetectionState(
     val detector: DetectorInfo? = null,
     val tracks: Map<String, Track> = emptyMap(),
     val seq: Long = -1,
-    /** False until the first snapshot, and again after the link drops (data is stale). */
     val synced: Boolean = false,
 ) {
-    /** Most dangerous first, then closest. This is the order every UI shows. */
     val sorted: List<Track>
         get() = tracks.values.sortedWith(
             compareByDescending<Track> { it.threat }.thenBy { it.distanceM ?: Float.MAX_VALUE },
@@ -23,20 +21,10 @@ data class DetectionState(
 }
 
 data class ApplyResult(
-    /** Non-null: client state is no longer trustworthy, reconnect for a fresh snapshot. */
     val resyncReason: String? = null,
-    /** Tracks that are new, or whose threat level went up. These trigger alerts. */
     val alerts: List<Track> = emptyList(),
 )
 
-/**
- * Single source of truth for "what is in the air right now", shared by the
- * foreground service, the phone UI and the Android Auto screen.
- *
- * Pure Kotlin (no Android types), so the protocol rules are unit-tested on the JVM.
- * Messages for one socket arrive sequentially; @Synchronized covers the hand-over
- * between an old and a new socket.
- */
 class TrackStore {
     private val _state = MutableStateFlow(DetectionState())
     val state: StateFlow<DetectionState> = _state.asStateFlow()
@@ -53,7 +41,6 @@ class TrackStore {
             is ServerMsg.Snapshot -> {
                 val next = msg.tracks.associateBy { it.id }
                 _state.value = s.copy(tracks = next, seq = msg.seq, synced = true)
-                // After a reconnect only alert on what we didn't already know about.
                 ApplyResult(alerts = next.values.filter { escalated(s.tracks[it.id], it) })
             }
 
@@ -79,7 +66,6 @@ class TrackStore {
         }
     }
 
-    /** Link dropped: keep showing last known tracks, but flagged as stale. */
     @Synchronized
     fun markStale() {
         _state.value = _state.value.copy(synced = false)

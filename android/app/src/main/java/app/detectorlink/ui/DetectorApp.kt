@@ -95,7 +95,6 @@ fun DetectorApp(graph: AppGraph) {
 
 @Composable
 private fun DiscoveryPane(graph: AppGraph, onConnect: (DetectorEndpoint) -> Unit) {
-    // Discovery runs only while this pane is on screen and the app is visible.
     val detectors by remember {
         graph.discovery.discover().catch { e ->
             Log.w("DiscoveryPane", "discovery failed", e)

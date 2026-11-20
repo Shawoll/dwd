@@ -23,20 +23,6 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Keeps the detector link alive while the app is in the background or the
- * screen is off - which is the normal state when the phone sits in a car mount.
- *
- * Why each piece is here:
- *  - Foreground service, type `connectedDevice`: the detector IS an external
- *    device we're connected to. FGS keeps network access under Doze and isn't
- *    subject to the 6 h daily cap Android 15 puts on `dataSync`.
- *  - Partial wake lock: alerts are safety-relevant and must not wait for the
- *    next maintenance window. Cost is acceptable because it's only held while
- *    connected, and in a car the phone is usually charging.
- *  - Wi-Fi lock: keeps the radio out of power-save so latency stays low.
- *  - WifiBinding: see that class; the detector's AP usually has no internet.
- */
 class DetectionService : LifecycleService() {
     private lateinit var wifiLock: WifiManager.WifiLock
     private lateinit var wakeLock: PowerManager.WakeLock
@@ -62,7 +48,6 @@ class DetectionService : LifecycleService() {
                 acquire()
             }
 
-        // Live status in the ongoing notification; at most once a second.
         lifecycleScope.launch {
             combine(g.connection.status, g.store.state) { link, state -> link to state }
                 .conflate()
@@ -82,7 +67,6 @@ class DetectionService : LifecycleService() {
             stopSelf()
             return START_NOT_STICKY
         }
-        // intent is null when the system restarts us after killing the process.
         val endpoint = intent?.endpoint() ?: graph.lastDetector.load()
         if (endpoint == null) {
             stopSelf()
@@ -102,6 +86,7 @@ class DetectionService : LifecycleService() {
     }
 
     private fun goForeground(): Boolean = try {
+        // connectedDevice, not dataSync: dataSync has a 6 h daily cap on Android 15.
         val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else 0
         ServiceCompat.startForeground(
             this, Alerts.ONGOING_ID,
@@ -110,8 +95,6 @@ class DetectionService : LifecycleService() {
         )
         true
     } catch (e: Exception) {
-        // Android 12+: a sticky restart from the background may not be allowed to
-        // go foreground. Give up quietly; the user reconnects from the app.
         Log.w(TAG, "cannot start foreground", e)
         stopSelf()
         false

@@ -1,6 +1,5 @@
 package app.detectorlink.discovery
 
-/** Where a detector lives on the network, as advertised over mDNS (or typed in manually). */
 data class DetectorEndpoint(
     val name: String,
     val host: String,
@@ -16,7 +15,6 @@ data class DetectorEndpoint(
     val uiUrl: String get() = "http://$authority$uiPath"
 
     companion object {
-        /** Fallback for networks that block multicast: "192.168.4.1" or "192.168.4.1:8080". */
         fun parseManual(input: String, defaultPort: Int = 8080): DetectorEndpoint? {
             val text = input.trim().removePrefix("http://").removePrefix("ws://").trimEnd('/')
             if (text.isEmpty()) return null

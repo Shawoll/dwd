@@ -1,9 +1,3 @@
-//! Deterministic drone-traffic simulator.
-//!
-//! `Simulator::step(now_ms)` is pure with respect to time: the caller supplies the
-//! clock, so tests can drive it without sleeping. Output is a list of
-//! `Event`s that the server stamps with sequence numbers.
-
 use std::collections::BTreeMap;
 
 use rand::{rngs::StdRng, Rng, SeedableRng};
@@ -18,19 +12,15 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub struct SimConfig {
-    /// Detector position, used to place Remote ID coordinates.
     pub origin: GeoPoint,
-    /// Probability per step that a new emitter appears.
     pub spawn_chance: f64,
     pub max_tracks: usize,
-    /// A track that is not heard for this long is reported as lost.
     pub lost_after_ms: u64,
 }
 
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
-            // Bratislava, roughly. Only used for fake Remote ID positions.
             origin: GeoPoint { lat: 48.1486, lon: 17.1077, alt_m: Some(140.0) },
             spawn_chance: 0.08,
             max_tracks: 6,
@@ -57,11 +47,8 @@ const PROFILES: &[Profile] = &[
 
 struct SimTrack {
     track: Track,
-    /// Metres per second towards (+) or away from (-) the detector.
     radial_speed: f32,
-    /// Degrees per second.
     angular_speed: f32,
-    /// When the emitter stops transmitting.
     silent_at_ms: u64,
 }
 
@@ -82,7 +69,6 @@ impl Simulator {
         self.tracks.values().map(|t| t.track.clone()).collect()
     }
 
-    /// Force a new emitter, used by the `/api/spawn` demo endpoint.
     pub fn spawn(&mut self, now_ms: u64) -> Track {
         let profile = &PROFILES[self.rng.gen_range(0..PROFILES.len())];
         let id = format!("trk-{:04}", self.next_id);
@@ -148,7 +134,6 @@ impl Simulator {
             self.tracks.remove(&id);
             events.push(Event::Lost { id });
         }
-        // Spawn last so a new track is reported exactly once in this step.
         if self.tracks.len() < self.cfg.max_tracks && self.rng.gen_bool(self.cfg.spawn_chance) {
             events.push(Event::Updated(self.spawn(now_ms)));
         }
@@ -156,10 +141,8 @@ impl Simulator {
     }
 }
 
-/// Recompute everything that follows from position: RSSI, threat, Remote ID coordinates.
 fn refresh_derived(t: &mut Track, origin: &GeoPoint) {
     let d = t.distance_m.unwrap_or(1_000.0).max(1.0);
-    // Free-space-ish path loss, rounded so the UI doesn't flicker on decimals.
     t.rssi_dbm = (-20.0 - 20.0 * d.log10()).round();
     t.threat = match d {
         d if d < 300.0 => ThreatLevel::High,
@@ -211,7 +194,6 @@ mod tests {
             .expect("track should eventually be lost");
 
         assert!(sim.active_tracks().is_empty());
-        // Lifetime is at most 40 s plus the lost timeout.
         assert!(lost_at <= 40_000 + quiet().lost_after_ms + 500);
     }
 

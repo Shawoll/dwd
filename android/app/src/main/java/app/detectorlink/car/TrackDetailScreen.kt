@@ -17,7 +17,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 
-/** One track in detail. At most 4 rows: that's what PaneTemplate allows on most hosts. */
 class TrackDetailScreen(carContext: CarContext, private val trackId: String) : Screen(carContext) {
     private val graph = carContext.graph
 

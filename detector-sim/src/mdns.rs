@@ -1,17 +1,8 @@
-//! mDNS / DNS-SD advertisement, so phones find the detector without typing an IP.
-//!
-//! Service: `_cuas-detector._tcp.local.`
-//! TXT records tell the client where things live, so paths can change
-//! on the device without an app update:
-//!   id=<serial>  proto=<protocol version>  ws=/ws  ui=/
-
 use anyhow::Context;
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 
 pub const SERVICE_TYPE: &str = "_cuas-detector._tcp.local.";
 
-/// Keeps the advertisement alive. Dropping it sends a goodbye packet,
-/// so phones remove the detector immediately instead of waiting for the TTL.
 pub struct Advertisement {
     daemon: ServiceDaemon,
     fullname: String,
@@ -25,7 +16,6 @@ pub fn advertise(instance: &str, id: &str, port: u16) -> anyhow::Result<Advertis
 
     let info = ServiceInfo::new(SERVICE_TYPE, instance, &host, "", port, &props[..])
         .context("building mDNS service info")?
-        // Advertise on every interface's addresses and follow changes (Wi-Fi up/down).
         .enable_addr_auto();
     let fullname = info.get_fullname().to_string();
     daemon.register(info).context("registering mDNS service")?;

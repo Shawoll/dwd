@@ -1,14 +1,3 @@
-//! Wire protocol between the detector and its clients (Android app, Svelte UI).
-//!
-//! Server -> client only; every message is a JSON text frame with a `type` tag.
-//! Design rules:
-//! * Every state-changing message carries a global, monotonically increasing `seq`.
-//!   A client that sees a gap (`seq != last + 1`) knows it missed something and
-//!   resyncs by reconnecting, which always starts with a full `snapshot`.
-//! * `snapshot` is the source of truth; `track_update` / `track_lost` are deltas.
-//! * Clients must ignore unknown `type`s and unknown fields (forward compatibility),
-//!   and `protocol` in `hello` is bumped only on breaking changes.
-
 use serde::{Deserialize, Serialize};
 
 pub const PROTOCOL_VERSION: u32 = 1;
@@ -16,16 +5,10 @@ pub const PROTOCOL_VERSION: u32 = 1;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ServerMsg {
-    /// First frame on every connection.
     Hello { protocol: u32, detector: DetectorInfo },
-    /// Full state. Sent right after `hello` and again whenever the server
-    /// had to drop events for a slow client.
     Snapshot { seq: u64, ts_ms: u64, tracks: Vec<Track> },
-    /// A track appeared or changed. Upsert by `track.id`.
     TrackUpdate { seq: u64, track: Track },
-    /// A track has not been heard for a while and is closed.
     TrackLost { seq: u64, ts_ms: u64, id: String },
-    /// Liveness + cheap consistency check (`active` should equal the client's count).
     Heartbeat { seq: u64, ts_ms: u64, active: usize },
 }
 
@@ -46,8 +29,6 @@ pub struct DetectorInfo {
     pub id: String,
     pub name: String,
     pub firmware: String,
-    /// Detector's own position, if it has GNSS. Lets clients turn
-    /// bearing + distance into a map position.
     pub position: Option<GeoPoint>,
 }
 
@@ -56,17 +37,13 @@ pub struct Track {
     pub id: String,
     pub first_seen_ms: u64,
     pub last_seen_ms: u64,
-    /// Human-readable link/protocol family, e.g. "DJI OcuSync 3".
     pub protocol: String,
     pub kind: EmitterKind,
     pub threat: ThreatLevel,
     pub freq_mhz: f32,
     pub rssi_dbm: f32,
-    /// Direction-finding result, degrees from true north, if available.
     pub bearing_deg: Option<f32>,
-    /// Rough range estimate from signal strength, if available.
     pub distance_m: Option<f32>,
-    /// Present when the drone broadcasts Remote ID (ASTM F3411 / EN 4709-002).
     pub remote_id: Option<RemoteId>,
 }
 

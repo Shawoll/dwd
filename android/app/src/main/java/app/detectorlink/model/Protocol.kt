@@ -4,13 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/**
- * Mirror of detector-sim/src/protocol.rs. Server -> client JSON, tagged by `type`.
- *
- * Forward compatibility is deliberate: unknown fields are ignored, unknown enum
- * values fall back to UNKNOWN, unknown message types are dropped. A detector on
- * newer firmware must never crash an older app in a car.
- */
 @Serializable
 sealed interface ServerMsg {
     @Serializable
@@ -65,7 +58,6 @@ enum class EmitterKind {
     UNKNOWN,
 }
 
-/** Ordered by severity so `>` means "more dangerous". */
 @Serializable
 enum class ThreatLevel {
     UNKNOWN,
@@ -85,15 +77,14 @@ object Protocol {
 
     val json = Json {
         ignoreUnknownKeys = true
-        coerceInputValues = true // unknown enum value -> property default (UNKNOWN)
+        coerceInputValues = true // unknown enum value -> UNKNOWN
         explicitNulls = false
     }
 
-    /** Returns null for frames we don't understand instead of throwing. */
     fun decode(text: String): ServerMsg? =
         try {
             json.decodeFromString(ServerMsg.serializer(), text)
-        } catch (e: IllegalArgumentException) { // SerializationException is a subclass
+        } catch (e: IllegalArgumentException) {
             null
         }
 }

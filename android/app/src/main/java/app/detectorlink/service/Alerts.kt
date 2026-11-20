@@ -43,7 +43,6 @@ object Alerts {
         )
     }
 
-    /** The mandatory foreground-service notification, doubling as a live status line. */
     fun ongoing(context: Context, link: LinkStatus, state: DetectionState): Notification {
         val title = when (link.phase) {
             LinkStatus.Phase.LIVE -> context.getString(R.string.status_live, link.endpoint?.name ?: "")
@@ -70,11 +69,6 @@ object Alerts {
             .build()
     }
 
-    /**
-     * Heads-up alert on the phone. The CarAppExtender makes the same notification
-     * show as a heads-up on the Android Auto screen, and tapping it there opens
-     * our car app instead of trying to launch a phone activity in the car.
-     */
     @SuppressLint("MissingPermission") // checked in canNotify()
     fun threat(context: Context, track: Track) {
         if (!canNotify(context)) return
@@ -105,7 +99,6 @@ object Alerts {
                     .build(),
             )
             .build()
-        // One notification per track: an escalation replaces the earlier alert.
         NotificationManagerCompat.from(context).notify(track.id, 0, notification)
     }
 

@@ -24,19 +24,13 @@ class DetectorLinkApp : Application() {
     }
 }
 
-/**
- * Hand-rolled DI. Phone UI, foreground service and Android Auto session all run in
- * the same process and share ONE connection and ONE store, so the car and the
- * phone can never disagree about what's in the air. (Hilt would replace this in
- * a production codebase; for five objects it's not worth the build time.)
- */
 class AppGraph(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val store = TrackStore()
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.MILLISECONDS) // streaming socket, liveness via ping + heartbeat
+        .readTimeout(0, TimeUnit.MILLISECONDS)
         .pingInterval(10, TimeUnit.SECONDS)
         .build()
 
@@ -45,7 +39,6 @@ class AppGraph(context: Context) {
     val lastDetector = LastDetector(context)
 }
 
-/** Remembers the last detector so the service (and the car) can reconnect without the phone UI. */
 class LastDetector(context: Context) {
     private val prefs = context.getSharedPreferences("last_detector", Context.MODE_PRIVATE)
 
