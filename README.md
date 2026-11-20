@@ -12,6 +12,19 @@ frontend/       Svelte 5 + Vite - the detector's web UI
 android/        Kotlin, Compose, OkHttp, Car App Library
 ```
 
+## Requirements
+
+| part | needs |
+|---|---|
+| `detector-sim/` | Rust 1.85+ (edition 2024), via [rustup](https://rustup.rs) |
+| `frontend/` | Node.js 20.19+ or 22.12+ (required by Vite 8) and pnpm (`brew install node pnpm`) |
+| `android/` | JDK 17–21 (Gradle 8.11 doesn't run on newer JDKs), Android SDK with platform 35 and build-tools 35 (easiest via Android Studio), a phone or emulator on API 26+ |
+| Android Auto (optional) | "Android Auto Desktop Head Unit Emulator" from the SDK Manager, see [demo docs](docs/demo.md) |
+
+The simulator runs without the frontend (WebSocket and API only). For the Android build, point
+`JAVA_HOME` at a JDK 17–21 and set `sdk.dir` in `android/local.properties` if Android Studio
+didn't create it.
+
 ## Running it
 
 ```bash
